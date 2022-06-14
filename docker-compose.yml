@@ -1,0 +1,46 @@
+services:
+  # mysqldb:
+  #   image: mysql:5.7
+  #   restart: unless-stopped
+  #   env_file: .env
+  #   ports:
+  #     - $MYSQL_CONFIG_LOCAL_PORT:$MYSQL_CONFIG_DOCKER_PORT
+  #   volumes:
+  #     - db:/var/lib/mysql
+  #     # - ./api/scripts/init_db.sh:/docker-entrypoint-initdb.d/init_db.sh
+  #   networks:
+  #     - backend
+
+  api:
+    # depends_on:
+    #   - mysqldb
+    build: ./api
+    entrypoint:
+      - yarn
+      - dev
+    ports:
+      - '8080:8080'
+    volumes:
+      - ./api:/usr/src/app
+      - /usr/src/app/node_modules
+    env_file: .env
+    # use database-agnostic names in case we want to migrate database
+    environment:
+      - DB_HOST=mysqldb
+      - DB_USER=$MYSQL_CONFIG_USER
+      - DB_PASSWORD=$MYSQL_ROOT_PASSWORD
+      - DB_NAME=$MYSQL_DATABASE
+      - DB_PORT=$MYSQL_CONFIG_DOCKER_PORT
+      # - CLIENT_ORIGIN_ALLOW_LIST=$CLIENT_ORIGIN_ALLOW_LIST
+      # - NODE_DOCKER_PORT=$NODE_DOCKER_PORT
+      # uncomment the below for manually resetting the database
+      # - FORCE_DB_RESET=true
+    networks:
+      - frontend
+      - backend
+
+volumes:
+  db:
+networks:
+  backend:
+  frontend:
