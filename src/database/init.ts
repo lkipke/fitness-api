@@ -1,7 +1,11 @@
-import { MongoClient } from 'mongodb';
+import { Collection, Document, MongoClient } from 'mongodb';
 
+export interface FitbitDatabases {
+  fitbitData: Collection<Document>;
+  fitbitAuth: Collection<Document>;
+}
 
-export default async () => {
+export default async (): Promise<FitbitDatabases> => {
   const USER = process.env.DB_USER;
   const PASS = process.env.DB_PASSWORD;
   const PORT = process.env.DB_PORT;
@@ -13,8 +17,10 @@ export default async () => {
 
   console.log('Connected successfully to MongoDB server!');
 
-  const db = client.db('fitbit');
-  const collection = db.collection('documents');
+  const db = client.db(process.env.DB_DATA_NAME);
 
-  return collection;
+  return {
+    fitbitData: db.collection('data'),
+    fitbitAuth: db.collection('auth'),
+  };
 };

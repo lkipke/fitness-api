@@ -23,11 +23,13 @@ services:
       - 8081:8081
     env_file: .env
     environment:
+      ME_CONFIG_BASICAUTH_USERNAME: $MONGO_DB_ADMIN_APP_USER
+      ME_CONFIG_BASICAUTH_PASSWORD: $MONGO_DB_ADMIN_APP_PASSWORD
       ME_CONFIG_MONGODB_ADMINUSERNAME: $MONGO_DB_ROOT_USER
       ME_CONFIG_MONGODB_ADMINPASSWORD: $MONGO_DB_ROOT_PASSWORD
       ME_CONFIG_MONGODB_URL: mongodb://$MONGO_DB_ROOT_USER:$MONGO_DB_ROOT_PASSWORD@mongo:$MONGO_DB_PORT/
     networks:
-      # - frontend
+      - frontend
       - backend
 
   server:
@@ -44,12 +46,13 @@ services:
       - /usr/src/app/node_modules
     env_file: .env
     environment:
-      - DB_NAME=$MONGO_DB_DATABASE
+      - DB_DATA_NAME=$MONGO_DB_METRICS_DATABASE
+      - DB_AUTH_NAME=$MONGO_DB_AUTH_DATABASE
       - DB_USER=$MONGO_DB_USER
       - DB_PASSWORD=$MONGO_DB_PASSWORD
       - DB_PORT=$MONGO_DB_PORT
     networks:
-      # - frontend
+      - frontend
       - backend
 
 volumes:
