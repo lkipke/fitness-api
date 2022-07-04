@@ -3,11 +3,10 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 import https from 'https';
 import fs from 'fs';
-import { Collection, Document } from 'mongodb';
 
-import initDb, { FitbitDatabases } from './database/init';
-import { authWithCode } from './auth';
-import { storeAuthCreds } from './database/fitbit-auth';
+import { init } from './database';
+import { storeAuthCreds } from './database';
+import { authWithCode, getActivityLogListForDate } from './fitbit';
 
 const port = process.env.NODE_DOCKER_PORT;
 const FITBIT_CLIENT_ID = process.env.FITBIT_CLIENT_ID as string;
@@ -18,7 +17,7 @@ const corsOptions: cors.CorsOptions = {
   credentials: true,
 };
 
-const createServer = (databases: FitbitDatabases) => {
+const createServer = () => {
   const app = express();
   https
     .createServer(
@@ -34,7 +33,6 @@ const createServer = (databases: FitbitDatabases) => {
 
   app.use(cors(corsOptions));
   app.use(express.json());
-  app.locals.db = databases;
 
   app.get('/', async (req: Request, res: Response) => {
     let html = await fs.promises.readFile('public/index.html', 'utf-8');
@@ -45,13 +43,13 @@ const createServer = (databases: FitbitDatabases) => {
     res.send('successfully connected to fitbit!');
   });
 
-  app.get('/test', async (req: Request, res: Response) => {
-    let database: Collection<Document> = req.app.locals.db.fitbitData;
-    await database.insertMany([{ we: 'did it!' }]);
-    let auth: Collection<Document> = req.app.locals.db.fitbitAuth;
-    await auth.insertMany([{ we: 'did it!' }]);
-    res.send('successful!');
-  });
+  // app.get('/test', async (req: Request, res: Response) => {
+  //   let database: Collection<Document> = req.app.locals.db.fitbitData;
+  //   await database.insertMany([{ we: 'did it!' }]);
+  //   let auth: Collection<Document> = req.app.locals.db.fitbitAuth;
+  //   await auth.insertMany([{ we: 'did it!' }]);
+  //   res.send('successful!');
+  // });
 
   app.get('/fitbit/callback', async (req: Request, res: Response) => {
     console.log('CODE', req.query.code);
@@ -65,12 +63,22 @@ const createServer = (databases: FitbitDatabases) => {
 
     if (results.success) {
       let { success, ...data } = results;
-      storeAuthCreds(req.app.locals.db.fitbitAuth, data);
+      storeAuthCreds(data);
       res.redirect('/fitbit/auth_success');
     } else {
-      res.status(500).send(results)
+      res.status(500).send(results);
     }
+  });
+
+  app.get('/fitbit/query/activity_log', async (req: Request, res: Response) => {
+    let date = req.query.date as string;
+    if (!date) {
+      return res.status(400).send('Must send a date');
+    }
+
+    await getActivityLogListForDate(date);
+    res.send(`successfully got data for date: ${date}`);
   });
 };
 
-initDb().then(createServer);
+init().then(createServer);
