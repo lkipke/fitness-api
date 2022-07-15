@@ -1,7 +1,6 @@
-import { Collection, Document } from 'mongodb';
 import fetch, { RequestInit, RequestInfo } from 'node-fetch';
-import { storeAuthCreds } from '../database';
-import { getAuthDb } from '../database/Database';
+import { storeAuthCreds } from '../mysql/auth';
+import Auth from '../mysql/models/Auth';
 
 const USER_ID = process.env.FITBIT_USER_ID;
 
@@ -13,13 +12,17 @@ export const getBasicAuth = () =>
 export const getServiceAuthHeader = () => `Basic ${getBasicAuth()}`;
 
 export const getUserAuthHeader = async () => {
-  let db = await getAuthDb();
-  let authEntry = await db.findOne({ user_id: USER_ID });
-  if (!authEntry?.access_token) {
+  let auth = await Auth.findOne({
+    where: {
+      userId: USER_ID
+    }
+  });
+
+  if (!auth?.accessToken) {
     throw new Error('missing auth in database');
   }
 
-  return `Bearer ${authEntry.access_token}`;
+  return `Bearer ${auth.accessToken}`;
 }
 
 // curl -i -X POST \
@@ -30,13 +33,17 @@ export const getUserAuthHeader = async () => {
 //  --data "refresh_token=128aada92b5e32ec60897048877b300330981e4b20852c3f7fb4263d2bd75af0"
 
 const refreshAuthToken = async () => {
-  let db = await getAuthDb();
-  let authEntry = await db.findOne({ user_id: USER_ID });
-  if (!authEntry) {
+  let auth = await Auth.findOne({
+    where: {
+      userId: USER_ID
+    }
+  });
+
+  if (!auth) {
     throw new Error('missing auth in database');
   }
 
-  console.log('auth_entry', authEntry);
+  console.log('auth_entry', auth);
 
   let result = await fetch('https://api.fitbit.com/oauth2/token', {
     method: 'POST',
@@ -45,7 +52,7 @@ const refreshAuthToken = async () => {
     },
     body: new URLSearchParams({
       grant_type: 'refresh_token',
-      refresh_token: authEntry.refresh_token,
+      refresh_token: auth.refreshToken,
     }),
   });
 

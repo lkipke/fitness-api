@@ -4,9 +4,9 @@ import cors from 'cors';
 import https from 'https';
 import fs from 'fs';
 
-import { init } from './database';
-import { storeAuthCreds } from './database';
 import { authWithCode, getActivityLogListForDate } from './fitbit';
+import { storeAuthCreds } from './mysql/auth';
+import init from './mysql/init';
 
 const port = process.env.NODE_DOCKER_PORT;
 const FITBIT_CLIENT_ID = process.env.FITBIT_CLIENT_ID as string;
