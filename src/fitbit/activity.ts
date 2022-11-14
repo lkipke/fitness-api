@@ -2,7 +2,7 @@ import { readFile, writeFile } from 'fs/promises';
 import ActivitySummary from '../mysql/models/ActivitySummary';
 import HeartRateZone from '../mysql/models/HeartRateZone';
 import Metric from '../mysql/models/Metric';
-import { fetchWithAuthRefresh, getUserAuthHeader } from './auth';
+import { fetchFitbit, getUserAuthHeader } from './auth';
 import {
   FitbitDataPoint,
   FitbitIntradayData,
@@ -96,72 +96,33 @@ const parseAndStoreActivityLogs = async (activities: Record<string, any>) => {
   return summaries;
 };
 
-const getRealActivityLogList = async (date: string) => {
-  let result = await fetchWithAuthRefresh(
-    `https://api.fitbit.com/1/user/-/activities/list.json?afterDate=${date}&sort=asc&offset=0&limit=25`,
-    {
-      headers: {
-        accept: 'application/json',
-        Authorization: await getUserAuthHeader(),
-      },
-    }
+export const getActivityLogListForDate = async (date: string) => {
+  let data = await fetchFitbit<Record<string, any[]>>(
+    `https://api.fitbit.com/1/user/-/activities/list.json?afterDate=${date}&sort=asc&offset=0&limit=100`
   );
 
-  console.log('headers', result.headers);
-  let data: { activities: Record<string, any>[] } = await result.json();
+  let logs = await parseAndStoreActivityLogs(data.activities);
+  data.activities.forEach(async (activity: any, idx: number) => {
+    let promises = [];
+    if (activity.heartRateLink) {
+      promises.push(getActivityIntraday('heart', activity.heartRateLink))
+    }
 
-  return { result, data };
-};
-
-const getFakeActivityLogList = async (date: string) => {
-  let filename = `json/logs/${date}.json`;
-  let data = JSON.parse(await readFile(filename, 'utf-8'));
-  let result = { ok: true };
-
-  return { result, data };
-};
-
-export const getActivityLogListForDate = async (date: string) => {
-  const { result, data } = await getRealActivityLogList(date);
-
-  if (result.ok) {
-    // await writeFile(filename, JSON.stringify(data));
-
-    let logs = await parseAndStoreActivityLogs(data.activities);
-    data.activities.forEach(async (activity: any, idx: number) => {
-      let data = await Promise.all(
-        intradayMetrics.map((activityType) =>
+    promises = promises.concat(
+      intradayMetrics
+        .filter((activityType) => activityType !== 'heart')
+        .map((activityType) =>
           getActivityIntraday(
             activityType,
             activity.caloriesLink.replace('calories', activityType)
           )
         )
-      );
+    );
 
-      parseAndStoreActivityData(data, logs[idx]);
-    });
-  } else {
-    console.error(data);
-  }
-};
+    let data = await Promise.all(promises);
 
-const getRealActivityIntraday = async (
-  metricType: IntradayMetric,
-  url: string
-) => {
-  // let url = `https://api.fitbit.com/1/user/-/activities/${metricType}/date/${formatDate(
-  //   startDate
-  // )}/1d/1min/time/${formatTime(startDate)}/${formatTime(endDate)}.json`;
-
-  let result = await fetchWithAuthRefresh(url, {
-    headers: {
-      accept: 'application/json',
-      Authorization: await getUserAuthHeader(),
-    },
+    parseAndStoreActivityData(data, logs[idx]);
   });
-
-  let data = await result.json();
-  return { result, data };
 };
 
 // const getFakeActivityIntraday = async (
@@ -169,6 +130,9 @@ const getRealActivityIntraday = async (
 //   url: string
 // ) => {
 //   let result = { ok: true };
+// let url = `https://api.fitbit.com/1/user/-/activities/${metricType}/date/${formatDate(
+//   startDate
+// )}/1d/1min/time/${formatTime(startDate)}/${formatTime(endDate)}.json`;
 
 //   let filename = `json/activity/${metricType}-${formatDate(
 //     startDate
@@ -182,14 +146,9 @@ export const getActivityIntraday = async (
   metricType: IntradayMetric,
   url: string
 ): Promise<FitbitIntradayData> => {
-  console.log('getting activity intraday', metricType, url);
+  console.log('*** Getting activity intraday', metricType, url);
 
-  let { result, data } = await getRealActivityIntraday(metricType, url);
-
-  if (!result.ok) {
-    throw new Error('error getting data');
-  }
-  // await writeFile(filename, JSON.stringify(data));
+  let data = await fetchFitbit<Record<string, any>>(url);
 
   return {
     metricType: metricType,

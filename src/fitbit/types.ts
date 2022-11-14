@@ -30,7 +30,7 @@ export const intradayMetrics = [
   'calories',
   'distance',
   'elevation',
-  'floors',
+  // 'floors',
   'heart'
 ] as const;
 export type IntradayMetric = typeof intradayMetrics[number];

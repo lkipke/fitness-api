@@ -1,6 +1,7 @@
-import fetch, { RequestInit, RequestInfo } from 'node-fetch';
+import fetch from 'node-fetch';
 import { storeAuthCreds } from '../mysql/auth';
 import Auth from '../mysql/models/Auth';
+import { useMock } from '../mocks/useMock';
 
 const USER_ID = process.env.FITBIT_USER_ID;
 
@@ -60,27 +61,38 @@ const refreshAuthToken = async () => {
     let json = await result.json();
     storeAuthCreds(json);
   } else {
-    return result;
+    throw result;
   }
 };
 
-export const fetchWithAuthRefresh = async (
-  url: RequestInfo,
-  init?: RequestInit
-) => {
-  let result = await fetch(url, init);
-
-  if (result.status === 400) {
-    console.log('NEED TOKEN REFRESH');
-    let error = await refreshAuthToken();
-    if (error) {
-      return error;
-    }
-
-    return await fetch(url, init);
+export const fetchFitbit = async<T>(
+  url: string,
+  withAuth = true,
+  withRefresh = true,
+): Promise<T> => {
+  if (process.env.USE_MOCK_DATA === 'true') {
+    return await useMock<T>(url);
   }
 
-  return result;
+  let init: Record<string, any> = {
+    headers: { accept: 'application/json' },
+  };
+
+  if (withAuth) {
+    init.headers.Authorization = getUserAuthHeader();
+  }
+
+  let result = await fetch(url, init);
+
+  if (result.status === 400 && withRefresh) {
+    console.log('*** Refreshing Fitbit auth token');
+    await refreshAuthToken();
+
+    let response = await fetch(url, init);
+    return await response.json();
+  }
+
+  return await result.json();
 };
 
 export interface AuthData {

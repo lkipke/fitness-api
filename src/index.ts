@@ -1,4 +1,5 @@
 import 'dotenv/config';
+
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 import https from 'https';
@@ -6,7 +7,7 @@ import fs from 'fs';
 
 import { authWithCode, getActivityLogListForDate } from './fitbit';
 import { storeAuthCreds } from './mysql/auth';
-import init from './mysql/init';
+import initDb from './mysql/init';
 
 const port = process.env.NODE_DOCKER_PORT;
 const FITBIT_CLIENT_ID = process.env.FITBIT_CLIENT_ID as string;
@@ -17,7 +18,9 @@ const corsOptions: cors.CorsOptions = {
   credentials: true,
 };
 
-const createServer = () => {
+process.env.USE_MOCK_DATA = 'true';
+
+initDb().then(() => {
   const app = express();
   https
     .createServer(
@@ -42,14 +45,6 @@ const createServer = () => {
   app.get('/fitbit/auth_success', async (req: Request, res: Response) => {
     res.send('successfully connected to fitbit!');
   });
-
-  // app.get('/test', async (req: Request, res: Response) => {
-  //   let database: Collection<Document> = req.app.locals.db.fitbitData;
-  //   await database.insertMany([{ we: 'did it!' }]);
-  //   let auth: Collection<Document> = req.app.locals.db.fitbitAuth;
-  //   await auth.insertMany([{ we: 'did it!' }]);
-  //   res.send('successful!');
-  // });
 
   app.get('/fitbit/callback', async (req: Request, res: Response) => {
     console.log('CODE', req.query.code);
@@ -79,6 +74,4 @@ const createServer = () => {
     await getActivityLogListForDate(date);
     res.send(`successfully got data for date: ${date}`);
   });
-};
-
-init().then(createServer);
+});

@@ -1,54 +1,17 @@
 services:
-  mysqldb:
-    image: mysql:5.7
-    restart: unless-stopped
+  mariadb_test:
+    image: mariadb
+    restart: always
     env_file: .env
-    ports:
-      - $MYSQL_CONFIG_LOCAL_PORT:$MYSQL_CONFIG_DOCKER_PORT
     volumes:
-      - sql_db:/var/lib/mysql
-      # - ./api/scripts/init_db.sh:/docker-entrypoint-initdb.d/init_db.sh
+      - ./maria/docker-entrypoint-initdb.d
+    environment:
+      MARIADB_ROOT_PASSWORD: $MYSQL_ROOT_PASSWORD
     networks:
       - backend
 
-  # mongo:
-  #   image: mongo
-  #   restart: always
-  #   env_file: .env
-  #   ports:
-  #     - 27017:27017
-  #   environment:
-  #     MONGO_INITDB_DATABASE: $MONGO_DB_DATABASE
-  #     MONGO_INITDB_ROOT_USERNAME: $MONGO_DB_ROOT_USER
-  #     MONGO_INITDB_ROOT_PASSWORD: $MONGO_DB_ROOT_PASSWORD
-  #   volumes:
-  #     - db:/data/db
-  #     - ./mongo/init.sh:/docker-entrypoint-initdb.d/mongo-init.sh:ro
-  #   networks:
-  #     - backend
-
-  # mongo-express:
-  #   depends_on:
-  #     - mongo
-  #   image: mongo-express
-  #   restart: always
-  #   ports:
-  #     - 8081:8081
-  #   env_file: .env
-  #   environment:
-  #     ME_CONFIG_BASICAUTH_USERNAME: $MONGO_DB_ADMIN_APP_USER
-  #     ME_CONFIG_BASICAUTH_PASSWORD: $MONGO_DB_ADMIN_APP_PASSWORD
-  #     ME_CONFIG_MONGODB_ADMINUSERNAME: $MONGO_DB_ROOT_USER
-  #     ME_CONFIG_MONGODB_ADMINPASSWORD: $MONGO_DB_ROOT_PASSWORD
-  #     ME_CONFIG_MONGODB_URL: mongodb://$MONGO_DB_ROOT_USER:$MONGO_DB_ROOT_PASSWORD@mongo:$MONGO_DB_PORT/
-  #   networks:
-  #     - frontend
-  #     - backend
-
   server:
     restart: unless-stopped
-    depends_on:
-      - mysqldb
     build: .
     entrypoint:
       - yarn
@@ -60,33 +23,15 @@ services:
       - /usr/src/app/node_modules
     env_file: .env
     environment:
-      # - DB_NAME=$MONGO_DB_DATABASE
-      # - DB_USER=$MONGO_DB_USER
-      # - DB_PASSWORD=$MONGO_DB_PASSWORD
-      # - DB_PORT=$MONGO_DB_PORT
-      - DB_HOST=mysqldb
-      - DB_USER=$MYSQL_CONFIG_USER
-      - DB_PASSWORD=$MYSQL_ROOT_PASSWORD
+      # Uncomment when running MariaDB locally.
+      - DB_HOST=mariadb_test
+      # - DB_HOST=127.0.0.1
+      - DB_PORT=3306
       - DB_NAME=$MYSQL_DATABASE
-      - DB_PORT=$MYSQL_CONFIG_DOCKER_PORT
+      - DB_USER=$MYSQL_USER
+      - DB_PASSWORD=$MYSQL_PASSWORD
     networks:
-      - frontend
       - backend
 
-  grafana:
-    image: grafana/grafana-oss
-    restart: always
-    ports:
-      - 3000:3000
-    volumes:
-      - ./grafana:/var/lib/grafana
-    networks:
-      - frontend
-      - backend
-
-volumes:
-  db:
-  sql_db:
 networks:
   backend:
-  frontend:
