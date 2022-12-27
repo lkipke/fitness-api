@@ -1,5 +1,7 @@
 .env
+.env.js
 key.pem
 dist
 node_modules
 json
+.DS_Store

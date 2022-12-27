@@ -1,34 +1,26 @@
 import { DataTypes, Model } from 'sequelize';
 import sequelize from '../sequelize';
 
-class Auth extends Model {
-  declare userId: string;
+class FitbitAuthSession extends Model {
+  /** foreign key to User table*/
+  declare UserId: string;
+
   declare accessToken: string;
-  declare expiresIn: number;
   declare refreshToken: string;
+  declare expiresIn: number;
   declare scope: string;
   declare tokenType: string;
 }
 
-Auth.init(
+FitbitAuthSession.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      allowNull: false,
-      primaryKey: true,
-    },
     accessToken: {
       type: DataTypes.STRING(500),
       allowNull: false,
     },
     refreshToken: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    userId: {
-      type: DataTypes.STRING,
-      allowNull: false,
+      type:  DataTypes.STRING(500),
+      allowNull: false
     },
     scope: DataTypes.STRING,
     tokenType: DataTypes.STRING,
@@ -36,4 +28,4 @@ Auth.init(
   { sequelize }
 );
 
-export default Auth;
+export default FitbitAuthSession;

@@ -5,7 +5,7 @@ const config = {
   USER: process.env.DB_USER,
   PASSWORD: process.env.DB_PASSWORD,
   DB: process.env.DB_NAME,
-  port: process.env.DB_PORT,
+  port: 3306,
   dialect: "mariadb" as const,
   pool: {
     max: 5,
@@ -18,7 +18,7 @@ const config = {
 const sequelize = new Sequelize(config.DB, config.USER, config.PASSWORD, {
   host: config.HOST,
   dialect: config.dialect,
-  port: parseInt(config.port),
+  port: config.port,
   pool: config.pool,
 });
 
